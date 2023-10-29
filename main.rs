@@ -1,4 +1,5 @@
 pub mod plant;
+mod push;
 
 mod plant_proto {
         include!("plant.rs");
@@ -17,48 +18,52 @@ use tokio::time::{sleep, Duration};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
-let channel = Channel::from_static("http://127.0.0.1:9001")
-    .connect()
-    .await?;
+    let channel = Channel::from_static("http://127.0.0.1:9001")
+        .connect()
+        .await?;
 
-let mut client = PlantServiceClient::new(channel);
+    let mut client = PlantServiceClient::new(channel);
 
 
-loop {
-    // Call the get_watered function
-    let response = client.get_watered(()).await?;
+    loop {
+        // Call the get_watered function
+        let response = client.get_watered(()).await?;
 
-    println!("Got watered");
+        println!("Got watered");
 
-    // Process the response and send push notifications
-    let plants = &response.get_ref().plants;
+        // Process the response and send push notifications
+        let plants = &response.get_ref().plants;
 
-    println!("Number of plants: {}", plants.len());  // Print out the number of plants
+        println!("Number of plants: {}", plants.len());  // Print out the number of plants
 
-    for plant in plants {
-        println!("plant");
-        match &plant.identifier {
-            Some(identifier) => {
-                let sku = &identifier.sku;
-                // Send push notification for the plant that needs to be watered
-                match send_push_notification(&sku) {
-                    Ok(_) => (),
-                    Err(e) => println!("Error sending push notification: {}", e),  // Print out any errors
-                }
-            },
-            None => println!("Plant has no identifier"),
+        for plant in plants {
+            println!("plant");
+            match &plant.information {
+                Some(information) => {
+                    let name = &information.name();
+                    // Send push notification for the plant that needs to be watered
+                    match send_push_notification(&name).await {
+                        Ok(_) => (),
+                        Err(e) => println!("Error sending push notification: {}", e),  // Print out any errors
+                    }
+                },
+                None => println!("Plant has no identifier"),
+            }
         }
+        
+        
+
+        // Sleep for 1 minute before making the next call
+        sleep(Duration::from_secs(60)).await;
     }
-
-    // Sleep for 1 minute before making the next call
-    sleep(Duration::from_secs(30)).await;
-}
 }
 
 
-fn send_push_notification(sku: &str) -> Result<(), Box<dyn Error>> {
-// Code for sending push notification goes here
-// Use the provided SKU and name to customize the notification
-println!("push to {}!!", sku);
-Ok(())
+         
+async fn send_push_notification(name: &str) -> Result<(), Box<dyn Error>> {
+    let push_string = format!("Remember to water {}!", name);
+    // Include 'name' in the data payload for deep linking
+    let payload = format!("navStack://petunia"); //, name
+    let _ = push::apns::run(&push_string).await;
+    Ok(())
 }
