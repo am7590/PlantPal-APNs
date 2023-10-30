@@ -8,7 +8,7 @@ mod plant_proto {
                 tonic::include_file_descriptor_set!("plant_descriptor");
 }
 
-use std::error::Error;
+use std::{error::Error, time::{SystemTime, UNIX_EPOCH}};
 use tonic::transport::Server;
 use dotenv::dotenv;
 use plant::plant_service_client::PlantServiceClient;
@@ -26,25 +26,52 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
     loop {
-        // Call the get_watered function
+        // Get plants that need to be watered
         let response = client.get_watered(()).await?;
-
-        println!("Got watered");
-
-        // Process the response and send push notifications
         let plants = &response.get_ref().plants;
-
-        println!("Number of plants: {}", plants.len());  // Print out the number of plants
+        println!("Number of notifications to send: {}", plants.len()); 
 
         for plant in plants {
-            println!("plant");
             match &plant.information {
                 Some(information) => {
                     let name = &information.name();
+                    let sku = &plant.identifier.as_ref().unwrap().sku;
+
+                    let now = SystemTime::now();
+                    let two_seconds = Duration::new(60*5, 0);
+                    let new_time = now + two_seconds;
+
+                    // Convert to int64 (Unix timestamp)
+                    let unix_timestamp = match new_time.duration_since(UNIX_EPOCH) {
+                        Ok(duration) => duration.as_secs() as i64,
+                        Err(_) => -1, // Handle errors here if necessary
+                    };
+
+                    println!("unix epoch: {}", unix_timestamp); 
+
+                    // Create the PlantUpdateRequest
+                    let request = tonic::Request::new(plant::PlantUpdateRequest {
+                        identifier: Some(plant::PlantIdentifier {
+                            sku: sku.clone(),
+                        }),
+                        information: Some(plant::PlantInformation {
+                            last_watered: Some(unix_timestamp),
+                            last_health_check: information.last_health_check,
+                            last_identification: information.last_identification,
+                            name: information.name.clone(), // Keep the user's current name
+                        }),
+                    });
+
                     // Send push notification for the plant that needs to be watered
                     match send_push_notification(&name).await {
-                        Ok(_) => (),
-                        Err(e) => println!("Error sending push notification: {}", e),  // Print out any errors
+                        Ok(_) => {
+                            let response = client.update_plant(request).await;
+                            match response {
+                                Ok(_) => println!("Successfully sent push"),
+                                Err(e) => println!("Error sending push notification: {}", e),
+                            }
+                        },
+                        Err(e) => println!("Error sending push notification: {}", e),
                     }
                 },
                 None => println!("Plant has no identifier"),
@@ -53,16 +80,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         
         
 
-        // Sleep for 1 minute before making the next call
+        println!("Sleeping for 1 minute before making the next call...");
         sleep(Duration::from_secs(60)).await;
     }
 }
 
-
          
 async fn send_push_notification(name: &str) -> Result<(), Box<dyn Error>> {
     let push_string = format!("Remember to water {}!", name);
-    // Include 'name' in the data payload for deep linking
+    // TODO: Include 'name' in the data payload for deep linking
     let payload = format!("navStack://petunia"); //, name
     let _ = push::apns::run(&push_string).await;
     Ok(())
