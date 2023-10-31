@@ -8,12 +8,15 @@ mod plant_proto {
                 tonic::include_file_descriptor_set!("plant_descriptor");
 }
 
-use std::{error::Error, time::{SystemTime, UNIX_EPOCH}};
+use std::{error::Error, time::{SystemTime, UNIX_EPOCH}, ptr::null};
 use tonic::transport::Server;
 use dotenv::dotenv;
 use plant::plant_service_client::PlantServiceClient;
 use tonic::transport::Channel;
 use tokio::time::{sleep, Duration};
+
+// Connect to psql: heroku pg:psql -a plant-app-postgres
+// SELECT * FROM plants;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -35,6 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             match &plant.information {
                 Some(information) => {
                     let name = &information.name();
+                    let device = &plant.identifier.as_ref().unwrap().device_identifier;
                     let sku = &plant.identifier.as_ref().unwrap().sku;
 
                     let now = SystemTime::now();
@@ -53,6 +57,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     let request = tonic::Request::new(plant::PlantUpdateRequest {
                         identifier: Some(plant::PlantIdentifier {
                             sku: sku.clone(),
+                            device_identifier: device.clone(),
                         }),
                         information: Some(plant::PlantInformation {
                             last_watered: Some(unix_timestamp),
@@ -63,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     });
 
                     // Send push notification for the plant that needs to be watered
-                    match send_push_notification(&name).await {
+                    match send_push_notification(&name, &device).await {
                         Ok(_) => {
                             let response = client.update_plant(request).await;
                             match response {
@@ -86,10 +91,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
          
-async fn send_push_notification(name: &str) -> Result<(), Box<dyn Error>> {
+async fn send_push_notification(name: &str, device: &str) -> Result<(), Box<dyn Error>> {
     let push_string = format!("Remember to water {}!", name);
     // TODO: Include 'name' in the data payload for deep linking
     let payload = format!("navStack://petunia"); //, name
-    let _ = push::apns::run(&push_string).await;
+    let _ = push::apns::run(&push_string, &device).await;
     Ok(())
 }

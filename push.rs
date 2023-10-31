@@ -5,11 +5,17 @@ pub mod apns {
     use a2::{NotificationOptions, DefaultNotificationBuilder, NotificationBuilder, Client, Endpoint,};
 
     #[derive(Serialize, Debug)]
-    struct PayloadURL {
-        url: &'static str,
+    pub struct PayloadURL {
+        url: String,
+    }
+    
+    impl PayloadURL {
+        pub fn new(url: String) -> Self {
+            PayloadURL { url }
+        }
     }
 
-    pub async fn run(name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(name: &str, device: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!("Pushing him...");
         
         let topic: Option<String> = Some("com.alek.SucculentAndPlantApp".to_owned());
@@ -18,21 +24,20 @@ pub mod apns {
             apns_topic: topic.as_deref(),
             ..Default::default()
         };
-
-        let payload_data = format!(r#"Remember to water Petunia!"#);
     
         let builder = DefaultNotificationBuilder::new()
-            .set_body(&payload_data)
+            .set_body(&name)
             .set_badge(420)
             .set_category("cat1")            
             .set_mutable_content()
             .set_sound("ping.flac");
             
-        let mut payload = builder.build("47c3d1239a3242d1a7768ae81daa9cde5c133d9b13d13e5b30520c7b4b0a9170", options);
-        let url = "navStack\\petunia";
+        // 47c3d1239a3242d1a7768ae81daa9cde5c133d9b13d13e5b30520c7b4b0a9170    
+        let mut payload = builder.build(device, options);
+        let url = format!("navStack\\{}", name);
 
         let payload_url = PayloadURL {
-            url: "navStack\\petunia",
+            url: url,
         };
 
         payload.add_custom_data("url", &payload_url)?;
