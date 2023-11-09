@@ -17,7 +17,8 @@ pub mod apns {
 
     pub async fn run(name: &str, device: &str) -> Result<(), Box<dyn std::error::Error>> {
         println!("Pushing him...");
-        
+        let push_string = format!("Remember to water {}!", name);
+
         let topic: Option<String> = Some("com.alek.SucculentAndPlantApp".to_owned());
     
         let options = NotificationOptions {
@@ -26,7 +27,7 @@ pub mod apns {
         };
     
         let builder = DefaultNotificationBuilder::new()
-            .set_body(&name)
+            .set_body(&push_string)
             .set_badge(420)
             .set_category("cat1")            
             .set_mutable_content()
