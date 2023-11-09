@@ -16,7 +16,6 @@ use tonic::transport::Channel;
 use tokio::time::{sleep, Duration};
 
 // Connect to psql: heroku pg:psql -a plant-app-postgres
-// SELECT * FROM plants;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -82,8 +81,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 None => println!("Plant has no identifier"),
             }
         }
-        
-        
 
         println!("Sleeping for 1 minute before making the next call...");
         sleep(Duration::from_secs(60)).await;
@@ -92,9 +89,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
          
 async fn send_push_notification(name: &str, device: &str) -> Result<(), Box<dyn Error>> {
-    let push_string = format!("Remember to water {}!", name);
     // TODO: Include 'name' in the data payload for deep linking
-    let payload = format!("navStack://petunia"); //, name
-    let _ = push::apns::run(&push_string, &device).await;
+    let payload = format!("navStack://{}", name);
+    let _ = push::apns::run(&name, &device).await;
     Ok(())
 }
