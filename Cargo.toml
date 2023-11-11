@@ -14,9 +14,12 @@ dotenv = "0.15"
 tonic = "0.8"
 prost = "0.11"
 tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
+<<<<<<< HEAD
 a2 = "0.7.1"
 serde = { version = "1.0", features = ["derive"] }
 rocket = "0.4.7"
+=======
+>>>>>>> b7e971a (womp)
 
 [build-dependencies]
 tonic-build = "0.8"
