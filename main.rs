@@ -19,7 +19,7 @@ use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
+    
     let channel = Channel::from_static("http://127.0.0.1:9001")
         .connect()
         .await?;
