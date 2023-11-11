@@ -10,11 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_client(true)
 	.build_server(true)
 	.file_descriptor_set_path(out_dir.join("plant_descriptor.bin"))
-<<<<<<< HEAD
 	.out_dir(".")
-=======
-	.out_dir("./src")
->>>>>>> b7e971a (womp)
 	.compile(&[proto_file], &["proto"])?;
 
     Ok(())
